@@ -197,6 +197,7 @@ func List(w io.Writer, cmd string) error {
 	return nil
 }
 
+// TODO: consider remove
 const (
 	Name    = `cclo`
 	Version = `0.1.0`
@@ -224,7 +225,7 @@ var usageWriter io.Writer = os.Stderr
 
 var opt struct {
 	help    bool
-	version bool
+	version bool // TODO: consider remove
 	list    bool
 }
 
