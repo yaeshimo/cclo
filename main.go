@@ -271,7 +271,8 @@ func run() error {
 		case 1:
 			return List(os.Stdout, flag.Arg(0))
 		default:
-			return errors.New("too many arguments")
+			// TODO: consider to accept for specify cache key
+			return fmt.Errorf("too many arguments: %q", flag.Args()[1:])
 		}
 	}
 	return runcmd(os.Stdout, os.Stderr, os.Stdin, flag.Args(), opt.force)
