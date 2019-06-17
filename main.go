@@ -52,18 +52,17 @@ var cachedir = func() string {
 // consider options:
 // -f Force to run
 // -l List caches
-// -r, --raw
+// -r, --raw Raw outputs
 // -remove COMMAND Remove specific commands caches
 // -remove COMMAND ARGUMENTS... Remove a caches
 
 // data design for cache
-// how to choice the data formats?
+// pick data formats
+// use sql?
 // requred contents:
-//	1. date
-//	2. outputs
-//	3. command line
-//
-// TODO: use sql?
+//	1. cached date
+//	2. raw outputs
+//	3. runned command line
 
 // json
 // filename is same that about target command names
@@ -118,7 +117,8 @@ func (cs *Caches) WriteCache() error {
 
 // args[0] is path to cmd, args[1:] are arguments
 // not cache stderr, caches only stdout
-func runcmd(stdout, stderr io.Writer, stdin io.Reader, args []string) error {
+// if force is true then force to run
+func runcmd(stdout, stderr io.Writer, stdin io.Reader, args []string, force bool) error {
 	if len(args) < 1 {
 		return errors.New("command not specified")
 	}
@@ -127,20 +127,21 @@ func runcmd(stdout, stderr io.Writer, stdin io.Reader, args []string) error {
 		return err
 	}
 
-	// Caches key
 	key := strings.Join(args, " ")
 
 	// use cache
-	cache, ok := cs.Caches[key]
-	if ok {
-		_, err := fmt.Fprint(stdout, string(cache.Output))
-		return err
+	if !force {
+		cache, ok := cs.Caches[key]
+		if ok {
+			_, err := fmt.Fprint(stdout, string(cache.Output))
+			return err
+		}
 	}
 
 	buf := new(bytes.Buffer)
 	mw := io.MultiWriter(stdout, buf)
 
-	// run
+	// run commands
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdout = mw
 	cmd.Stderr = stderr
@@ -199,7 +200,6 @@ func List(w io.Writer, cmd string) error {
 	return nil
 }
 
-// TODO: consider remove
 const (
 	Name    = `cclo`
 	Version = `0.1.0`
@@ -215,26 +215,33 @@ Usage:
 Options:
   -help         Display this message
   -version      Display version
-  -list         List cached command names
-  -list COMMAND List specific commands caches
+  -list COMMAND List cached commands
 
 Examples:
-  $ cclo -help # help
+  $ cclo -help # display help
   $ cclo date; sleep 1; cclo date # output same times
+  $ cclo -list # list cached command names
+  $ cclo -list # list specific commands caches
 `
 
 var usageWriter io.Writer = os.Stderr
 
 var opt struct {
 	help    bool
-	version bool // TODO: consider remove
+	version bool
 	list    bool
+
+	force bool
 }
 
 func init() {
 	flag.BoolVar(&opt.help, "help", false, "Display this message")
 	flag.BoolVar(&opt.version, "version", false, "Display version")
 	flag.BoolVar(&opt.list, "list", false, "List cached commands")
+
+	flag.BoolVar(&opt.force, "force", false, "Ignore cache and force to run")
+	flag.BoolVar(&opt.force, "f", false, "Alias of -force")
+
 	flag.Usage = func() { fmt.Fprintln(usageWriter, usage) }
 }
 
@@ -263,7 +270,7 @@ func run() error {
 			return errors.New("too many arguments")
 		}
 	}
-	return runcmd(os.Stdout, os.Stderr, os.Stdin, flag.Args())
+	return runcmd(os.Stdout, os.Stderr, os.Stdin, flag.Args(), opt.force)
 }
 
 func main() {
