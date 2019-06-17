@@ -21,6 +21,7 @@ import (
 //
 // consider use cclo/ to cclo/cache/
 
+// TODO: move making directory function to other places
 var cachedir = func() string {
 	dir, err := os.UserCacheDir()
 	if err != nil {
@@ -29,10 +30,11 @@ var cachedir = func() string {
 	dir = filepath.Join(dir, "cclo")
 	fi, err := os.Stat(dir)
 	if os.IsNotExist(err) {
-		err := os.Mkdir(dir, 700)
+		err := os.Mkdir(dir, 0700)
 		if err != nil {
 			panic(err)
 		}
+		return dir
 	}
 	if !fi.IsDir() {
 		panic("seems not directory " + dir)
