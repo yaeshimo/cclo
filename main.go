@@ -213,15 +213,19 @@ Usage:
   cclo [Options] [--] COMMAND ARGUMENTS...
 
 Options:
-  -help         Display this message
-  -version      Display version
-  -list COMMAND List cached commands
+  -help           Display this message
+  -version        Display version
+  -list [COMMAND] List cached commands
+  -f, -force      Ignore caches and force to run
 
 Examples:
   $ cclo -help # display help
-  $ cclo date; sleep 1; cclo date # output same times
-  $ cclo -list # list cached command names
-  $ cclo -list # list specific commands caches
+
+  $ cclo date; sleep 1; cclo date    # output same times
+  $ cclo date: sleep 1; cclo -f date # output different times
+
+  $ cclo -list           # list cached command names
+  $ cclo -list [COMMAND] # list specific commands caches
 `
 
 var usageWriter io.Writer = os.Stderr
@@ -239,7 +243,7 @@ func init() {
 	flag.BoolVar(&opt.version, "version", false, "Display version")
 	flag.BoolVar(&opt.list, "list", false, "List cached commands")
 
-	flag.BoolVar(&opt.force, "force", false, "Ignore cache and force to run")
+	flag.BoolVar(&opt.force, "force", false, "Ignore caches and force to run")
 	flag.BoolVar(&opt.force, "f", false, "Alias of -force")
 
 	flag.Usage = func() { fmt.Fprintln(usageWriter, usage) }
