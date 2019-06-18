@@ -1,18 +1,18 @@
 # cclo
 
-To cache the output of the command line
+To cache the output of the command line.
 
 ## Usage
 
 ```sh
-# if first time then run the command and to cache
+# if first time then run the command and to cache.
 cclo -- date
 
-# if next time then display cached outputs
+# if next time then display cached outputs.
 cclo -- date
 ```
 
-If you use `pacman` then you can cache the `checkupdates`
+If you use `pacman` then you can cache the `checkupdates`.
 
 ```sh
 # require before run
@@ -31,11 +31,14 @@ alias checklog='cclo -- checkupdates'
 
 ## Requirements
 
-User cache directory
+Require user cache directory.
 
-### Linux
+- Unix systems: `$XDG_CACHE_HOME/cclo/` or `~/.cache/cclo/`
+- Darwin: `$HOME/Library/Caches/cclo`
+- Windows:`%LocalAppData%\cclo\`
+- Plan 9: `$home/lib/cache`
 
-`$XDG_CACHE_HOME/cclo/` or `~/.cache/cclo/`
+To create at first running.
 
 ## Installation
 
