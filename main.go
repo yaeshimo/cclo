@@ -24,17 +24,7 @@ var cachedir = func() string {
 	return filepath.Join(dir, "cclo")
 }()
 
-// impl:
-// - parse command line
-// - read cache
-// - if cached then display a cache
-// - else, to run the commands
-// - if not cached then to cache a outputs
-
 // consider options:
-// -f Force to run
-// -l List caches
-// -r, --raw Raw outputs
 // -remove COMMAND Remove specific commands caches
 // -remove COMMAND ARGUMENTS... Remove a caches
 
@@ -46,8 +36,6 @@ var cachedir = func() string {
 //	2. raw outputs
 //	3. runned command line
 
-// json
-// filename is same that about target command names
 type Cache struct {
 	// []string{"cmdpath", "arg1", "arg2", ...}
 	Args   []string  `json:"Args"`
@@ -55,7 +43,7 @@ type Cache struct {
 	Output []byte    `json:"output"`
 }
 
-// json
+// COMMANDNAME.json
 type Caches struct {
 	// path to cache file
 	path string
@@ -161,6 +149,7 @@ func List(w io.Writer, cmd string) error {
 		if !strings.HasSuffix(fi.Name(), ".json") {
 			continue
 		}
+
 		name := strings.TrimSuffix(filepath.Base(fi.Name()), ".json")
 		if cmd == "" {
 			// list only command names
@@ -212,8 +201,8 @@ Examples:
   $ cclo date; sleep 1; cclo date    # output same times
   $ cclo date: sleep 1; cclo -f date # output different times
 
-  $ cclo -list           # list cached command names
-  $ cclo -list [COMMAND] # list specific commands caches
+  $ cclo -list            # list cached command names
+  $ cclo -list -- COMMAND # list specific commands caches
 `
 
 var usageWriter io.Writer = os.Stderr
