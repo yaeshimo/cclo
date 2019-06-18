@@ -34,9 +34,9 @@ alias checklog='cclo -- checkupdates'
 Require user cache directory.
 
 - Unix systems: `$XDG_CACHE_HOME/cclo/` or `~/.cache/cclo/`
-- Darwin: `$HOME/Library/Caches/cclo`
+- Darwin: `$HOME/Library/Caches/cclo/`
 - Windows:`%LocalAppData%\cclo\`
-- Plan 9: `$home/lib/cache`
+- Plan 9: `$home/lib/cache/`
 
 To create at first running.
 
