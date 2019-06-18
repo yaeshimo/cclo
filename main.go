@@ -15,31 +15,13 @@ import (
 	"time"
 )
 
-// cache directories priority:
-//	1. $XDG_CACHE_HOME/cclo/COMMANDNAME.json
-//	2. ~/.cache/cclo/COMMANDNAME.json
-//
-// consider use cclo/ to cclo/cache/
-
-// TODO: move making directory function to other places
+// expected caches locatoin: CACHEDIR/cclo/COMMANDNAME.json
 var cachedir = func() string {
 	dir, err := os.UserCacheDir()
 	if err != nil {
 		panic(err)
 	}
-	dir = filepath.Join(dir, "cclo")
-	fi, err := os.Stat(dir)
-	if os.IsNotExist(err) {
-		err := os.Mkdir(dir, 0700)
-		if err != nil {
-			panic(err)
-		}
-		return dir
-	}
-	if !fi.IsDir() {
-		panic("seems not directory " + dir)
-	}
-	return dir
+	return filepath.Join(dir, "cclo")
 }()
 
 // impl:
@@ -112,6 +94,10 @@ func (cs *Caches) WriteCache() error {
 	if err != nil {
 		return err
 	}
+	err = os.MkdirAll(cachedir, 0700)
+	if err != nil {
+		return err
+	}
 	return ioutil.WriteFile(cs.path, b, 0600)
 }
 
@@ -129,7 +115,7 @@ func runcmd(stdout, stderr io.Writer, stdin io.Reader, args []string, force bool
 
 	key := strings.Join(args, " ")
 
-	// use cache
+	// check the cache
 	if !force {
 		cache, ok := cs.Caches[key]
 		if ok {
@@ -138,6 +124,7 @@ func runcmd(stdout, stderr io.Writer, stdin io.Reader, args []string, force bool
 		}
 	}
 
+	// tee
 	buf := new(bytes.Buffer)
 	mw := io.MultiWriter(stdout, buf)
 
@@ -152,8 +139,6 @@ func runcmd(stdout, stderr io.Writer, stdin io.Reader, args []string, force bool
 	}
 
 	// to cache
-	// TODO: reconsider
-	// needs at here?
 	cs.Caches[key] = Cache{
 		Args:   args,
 		Date:   time.Now(),
@@ -167,6 +152,9 @@ func runcmd(stdout, stderr io.Writer, stdin io.Reader, args []string, force bool
 func List(w io.Writer, cmd string) error {
 	fis, err := ioutil.ReadDir(cachedir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
 		return err
 	}
 	for _, fi := range fis {
