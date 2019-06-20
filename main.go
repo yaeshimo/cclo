@@ -100,10 +100,14 @@ func (cs *Caches) WriteCache() error {
 	return ioutil.WriteFile(cs.path, b, 0600)
 }
 
+// Consdier: to methods for Cache?
+//
 // args[0] is path to cmd, args[1:] are arguments
-// not cache stderr, caches only stdout
-// if force is true then force to run
-func runcmd(stdout, stderr io.Writer, stdin io.Reader, args []string, force bool) error {
+// write to stdout and stderr
+// caches output
+// if combineStderr is true then combine stderr to caches
+// if force is true then ignore caches and force to run
+func runcmd(stdout, stderr io.Writer, stdin io.Reader, force bool, combineStderr bool, args []string) error {
 	if len(args) < 1 {
 		return errors.New("command not specified")
 	}
@@ -124,13 +128,19 @@ func runcmd(stdout, stderr io.Writer, stdin io.Reader, args []string, force bool
 	}
 
 	// tee
+	var w, errw io.Writer
 	buf := new(bytes.Buffer)
-	mw := io.MultiWriter(stdout, buf)
+	w = io.MultiWriter(stdout, buf)
+	if combineStderr {
+		errw = io.MultiWriter(stderr, buf)
+	} else {
+		errw = stderr
+	}
 
 	// run commands
 	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = mw
-	cmd.Stderr = stderr
+	cmd.Stdout = w
+	cmd.Stderr = errw
 	cmd.Stdin = stdin
 	err = cmd.Run()
 	if err != nil {
@@ -205,6 +215,7 @@ Options:
   -version        Display version
   -list [COMMAND] List cached commands
   -f, -force      Ignore caches and force to run
+  -stderr         Combine stderr to cache
   -R, -recover    Recover for broken previous run
 
 Examples:
@@ -224,7 +235,8 @@ var opt struct {
 	version bool
 	list    bool
 
-	force bool
+	force  bool
+	stderr bool
 
 	reco bool
 }
@@ -243,6 +255,8 @@ func init() {
 
 	flag.BoolVar(&opt.force, "force", false, "Ignore caches and force to run")
 	flag.BoolVar(&opt.force, "f", false, "Alias of -force")
+
+	flag.BoolVar(&opt.stderr, "stderr", false, "Cache with stderr")
 
 	flag.BoolVar(&opt.reco, "recover", false, "Recover broken previous run")
 	flag.BoolVar(&opt.reco, "R", false, "Alias of -recover")
@@ -303,7 +317,7 @@ func run() error {
 		flag.Usage()
 		return errors.New("command not specified")
 	}
-	return runcmd(os.Stdout, os.Stderr, os.Stdin, flag.Args(), opt.force)
+	return runcmd(os.Stdout, os.Stderr, os.Stdin, opt.force, opt.stderr, flag.Args())
 }
 
 func main() {
