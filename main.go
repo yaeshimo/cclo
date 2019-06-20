@@ -205,6 +205,7 @@ Options:
   -version        Display version
   -list [COMMAND] List cached commands
   -f, -force      Ignore caches and force to run
+  -R, -recover    Recover for broken previous run
 
 Examples:
   $ cclo -help # display help
@@ -224,6 +225,8 @@ var opt struct {
 	list    bool
 
 	force bool
+
+	reco bool
 }
 
 func init() {
@@ -241,6 +244,9 @@ func init() {
 	flag.BoolVar(&opt.force, "force", false, "Ignore caches and force to run")
 	flag.BoolVar(&opt.force, "f", false, "Alias of -force")
 
+	flag.BoolVar(&opt.reco, "recover", false, "Recover broken previous run")
+	flag.BoolVar(&opt.reco, "R", false, "Alias of -recover")
+
 	flag.Usage = func() { fmt.Fprintln(usageWriter, usage) }
 }
 
@@ -253,6 +259,22 @@ func run() error {
 		return nil
 	case opt.version:
 		_, err := fmt.Printf("%s %s\n", Name, Version)
+		return err
+	case opt.reco:
+		// TODO: impl
+		// restore caches from CACHEDIR/*.json.back
+		// remove *.json.back
+
+		// unlock(remove lockfiles)
+		unlock, err := Lock()
+		if err != nil && !(err == ErrIsLocked) {
+			return err
+		}
+		err = unlock()
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Printf("removed lockfile: %q\n", lockfile)
 		return err
 	}
 
