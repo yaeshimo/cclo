@@ -15,26 +15,36 @@ import (
 	"time"
 )
 
-// expected caches locatoin: CACHEDIR/cclo/COMMANDNAME.json
-var cachedir = func() string {
-	dir, err := os.UserCacheDir()
+// set by init
+var (
+	// USERCACHEDIR/cclo/
+	cachedir string
+
+	// filepath.Join(cachedir, "cclo.lock")
+	lockfile string
+)
+
+var ErrIsLocked = errors.New("already running cclo or broked previous run")
+
+// test
+//	cclo -f sleep 10 &
+//	cclo -f sleep 10
+func Lock() (unlock func() error, err error) {
+	lockfile := filepath.Join(cachedir, "cclo.lock")
+	unlock = func() error { return os.Remove(lockfile) }
+	f, err := os.OpenFile(lockfile, os.O_RDONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
-		panic(err)
+		if os.IsExist(err) {
+			return unlock, ErrIsLocked
+		}
+		return nil, err
 	}
-	return filepath.Join(dir, "cclo")
-}()
-
-// consider options:
-// -remove COMMAND Remove specific commands caches
-// -remove COMMAND ARGUMENTS... Remove a caches
-
-// data design for cache
-// pick data formats
-// use sql?
-// requred contents:
-//	1. cached date
-//	2. raw outputs
-//	3. runned command line
+	err = f.Close()
+	if err != nil {
+		return nil, err
+	}
+	return unlock, nil
+}
 
 type Cache struct {
 	// []string{"cmdpath", "arg1", "arg2", ...}
@@ -43,9 +53,9 @@ type Cache struct {
 	Output []byte    `json:"output"`
 }
 
-// COMMANDNAME.json
+// expected location: CACHEDIR/cclo/COMMANDNAME.json
 type Caches struct {
-	// path to cache file
+	// path to cache files
 	path string
 
 	// command name
@@ -77,6 +87,7 @@ func ReadCache(cmdpath string) (*Caches, error) {
 	return cs, nil
 }
 
+// TODO: write backup
 func (cs *Caches) WriteCache() error {
 	b, err := json.MarshalIndent(cs, "", "\t")
 	if err != nil {
@@ -216,6 +227,13 @@ var opt struct {
 }
 
 func init() {
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		panic(err)
+	}
+	cachedir = filepath.Join(dir, "cclo")
+	lockfile = filepath.Join(cachedir, "cclo.lock")
+
 	flag.BoolVar(&opt.help, "help", false, "Display this message")
 	flag.BoolVar(&opt.version, "version", false, "Display version")
 	flag.BoolVar(&opt.list, "list", false, "List cached commands")
@@ -237,10 +255,16 @@ func run() error {
 		_, err := fmt.Printf("%s %s\n", Name, Version)
 		return err
 	}
-	if flag.NArg() < 1 && !opt.list {
-		flag.Usage()
-		return errors.New("command not specified")
+
+	unlock, err := Lock()
+	if err != nil {
+		if err == ErrIsLocked {
+			return fmt.Errorf("%v: %s", err, "if broken previously then try -recover")
+		}
+		return err
 	}
+	defer unlock()
+
 	if opt.list {
 		switch flag.NArg() {
 		case 0:
@@ -252,12 +276,17 @@ func run() error {
 			return fmt.Errorf("too many arguments: %q", flag.Args()[1:])
 		}
 	}
+
+	if flag.NArg() < 1 {
+		flag.Usage()
+		return errors.New("command not specified")
+	}
 	return runcmd(os.Stdout, os.Stderr, os.Stdin, flag.Args(), opt.force)
 }
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "cclo [Err]: %v\n", err)
 		os.Exit(1)
 	}
 }
