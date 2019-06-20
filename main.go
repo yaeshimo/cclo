@@ -30,7 +30,6 @@ var ErrIsLocked = errors.New("already running cclo or broked previous run")
 //	cclo -f sleep 10 &
 //	cclo -f sleep 10
 func Lock() (unlock func() error, err error) {
-	lockfile := filepath.Join(cachedir, "cclo.lock")
 	unlock = func() error { return os.Remove(lockfile) }
 	f, err := os.OpenFile(lockfile, os.O_RDONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
@@ -215,7 +214,7 @@ Options:
   -version        Display version
   -list [COMMAND] List cached commands
   -f, -force      Ignore caches and force to run
-  -stderr         Combine stderr to cache
+  -stderr         Combine stderr to caches
   -R, -recover    Recover for broken previous run
 
 Examples:
